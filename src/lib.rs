@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate serde_json;
+extern crate rand;
 
 use std::any::TypeId;
 use std::collections::hash_map::DefaultHasher;
@@ -28,6 +29,11 @@ use bitcoin::consensus::encode::{deserialize, serialize};
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{Address, Network, OutPoint, Transaction};
+use std::error::Error;
+use crate::keys::{generate_mnemonic, create_ext_priv_key, create_ext_pub_key};
+use bip39::Mnemonic;
+
+mod keys;
 
 #[derive(Debug, Deserialize)]
 struct KotlinPair<F: std::fmt::Debug, S: std::fmt::Debug> {
@@ -111,6 +117,16 @@ enum BDKRequest {
     PublicDescriptors {
         wallet: IntermediatePtr,
     },
+    /// Generate new random mnemonic and corresponding extended keys
+    GenerateExtendedKeys {
+        network: Network,
+        mnemonic_word_count: usize
+    },
+    /// Create corresponding extended keys for given mnemonic
+    CreateExtendedKeys {
+        network: Network,
+        mnemonic: String
+    },
 }
 
 #[derive(Debug)]
@@ -124,6 +140,9 @@ enum BDKJNIError {
     CantOpenTree(sled::Error, String),
 
     Parsing(String),
+
+    MnemonicError(bip39::Error),
+    ExtKeyError(bdk::bitcoin::util::bip32::Error),
 }
 
 impl From<bdk::Error> for BDKJNIError {
@@ -138,6 +157,18 @@ impl From<bdk::Error> for BDKJNIError {
 impl From<bdk::electrum_client::Error> for BDKJNIError {
     fn from(other: bdk::electrum_client::Error) -> Self {
         BDKJNIError::ElectrumClientError(other)
+    }
+}
+
+impl From<bip39::Error> for BDKJNIError {
+    fn from(other: bip39::Error) -> Self {
+        BDKJNIError::MnemonicError(other)
+    }
+}
+
+impl From<bdk::bitcoin::util::bip32::Error> for BDKJNIError {
+    fn from(other: bdk::bitcoin::util::bip32::Error) -> Self {
+        BDKJNIError::ExtKeyError(other)
     }
 }
 
@@ -416,6 +447,16 @@ where
             serde_json::to_value(&PublicDescriptorsResponse { external, internal })
                 .map_err(BDKJNIError::Serialization)
         }
+        GenerateExtendedKeys { .. } => {
+            Err(BDKJNIError::Unsupported(
+                "Called `do_wallet_call` with a GenerateExtendedKeys request".to_string(),
+            ))
+        }
+        CreateExtendedKeys { .. } => {
+            Err(BDKJNIError::Unsupported(
+                "Called `do_wallet_call` with a CreateExtendedKeys request".to_string(),
+            ))
+        }
     };
 
     if destroy_at_end {
@@ -425,6 +466,56 @@ where
     }
 
     resp
+}
+
+fn do_keys_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
+    use crate::BDKRequest::*;
+
+    match req {
+        GenerateExtendedKeys { network, mnemonic_word_count } => {
+            #[derive(Serialize)]
+            struct GenerateExtendedKeysResponse {
+                mnemonic: String,
+                ext_priv_key: String,
+                ext_pub_key: String,
+            }
+            let mnemonic = generate_mnemonic(mnemonic_word_count)?;
+            let ext_priv_key = create_ext_priv_key(network, &mnemonic)?;
+            let ext_pub_key = create_ext_pub_key(&ext_priv_key);
+
+            let resp = &GenerateExtendedKeysResponse {
+                mnemonic: mnemonic.to_string(),
+                ext_priv_key: ext_priv_key.to_string(),
+                ext_pub_key: ext_pub_key.to_string()
+            };
+
+            serde_json::to_value(resp).map_err(BDKJNIError::Serialization)
+        },
+        CreateExtendedKeys { network, mnemonic } => {
+            #[derive(Serialize)]
+            struct CreateExtendedKeysResponse {
+                mnemonic: String,
+                ext_priv_key: String,
+                ext_pub_key: String,
+            }
+            let mnemonic = Mnemonic::parse(mnemonic)?;
+            let ext_priv_key = create_ext_priv_key(network, &mnemonic)?;
+            let ext_pub_key = create_ext_pub_key(&ext_priv_key);
+
+            let resp = &CreateExtendedKeysResponse {
+                mnemonic: mnemonic.to_string(),
+                ext_priv_key: ext_priv_key.to_string(),
+                ext_pub_key: ext_pub_key.to_string()
+            };
+
+            serde_json::to_value(resp).map_err(BDKJNIError::Serialization)
+        },
+        _ => {
+            Err(BDKJNIError::Unsupported(
+                "Called `do_key_call` with a non-keys request".to_string(),
+            ))
+        }
+    }
 }
 
 /// Expose the JNI interface below
@@ -524,7 +615,9 @@ pub mod android {
                         "Invalid wallet pointer".to_string(),
                     ))
                 }
-            }
+            },
+            GenerateExtendedKeys { .. }
+            | CreateExtendedKeys { .. } => do_keys_call(deser),
         };
 
         let final_string = match response_result {

@@ -67,6 +67,12 @@ data class PublicDescriptorsResponse(
     val internal: String?
 )
 
+data class ExtendedKeys(
+    val mnemonic: String,
+    val ext_priv_key: String,
+    val ext_pub_key: String
+)
+
 // FIXME: Those should be decleared as UBytes, but jackson doesn't know how to parse them. so we use Ints that are larger and won't overflow to negative
 data class WalletPtr(
     var raw: List<Int>,

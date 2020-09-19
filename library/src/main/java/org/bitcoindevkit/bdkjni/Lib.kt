@@ -195,4 +195,32 @@ class Lib {
         // FIXME: would be better to re-use the jsonnode instead of parsing the string again
         return mapper.treeToValue(json, PublicDescriptorsResponse::class.java)
     }
+
+    fun generate_extended_key(network: Network, mnemonicWordCount: Int): ExtendedKeys {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.set("network", mapper.valueToTree<JsonNode>(network))
+        node.put("mnemonic_word_count", mnemonicWordCount)
+        val req = JsonRpc("generate_extended_keys", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        return mapper.treeToValue(json, ExtendedKeys::class.java)
+    }
+
+    fun create_extended_keys(network: Network, mnemonic: String): ExtendedKeys {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.set("network", mapper.valueToTree<JsonNode>(network))
+        node.put("mnemonic", mnemonic)
+        val req = JsonRpc("create_extended_keys", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        return mapper.treeToValue(json, ExtendedKeys::class.java)
+    }
 }
