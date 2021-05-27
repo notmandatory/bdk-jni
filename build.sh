@@ -13,7 +13,11 @@ export CFLAGS="-D__ANDROID_API__=21"
 # IMPORTANT: make sure every target is not a substring of a different one. We check for them with grep later on
 BUILD_TARGETS="${BUILD_TARGETS:-aarch64,armv7,x86_64,i686,linux}"
 
-mkdir -p android/src/main/jniLibs/ android/src/main/jniLibs/arm64-v8a android/src/main/jniLibs/x86_64 android/src/main/jniLibs/armeabi-v7a android/src/main/jniLibs/x86 lib/build/jniLibs/x86_64_linux
+# android
+mkdir -p android/src/main/jniLibs/ android/src/main/jniLibs/arm64-v8a android/src/main/jniLibs/x86_64 android/src/main/jniLibs/armeabi-v7a android/src/main/jniLibs/x86
+
+# jvm
+mkdir -p jvm/build/jniLibs/x86_64_linux
 
 if echo $BUILD_TARGETS | grep "aarch64"; then
     CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang" CC="aarch64-linux-android21-clang" cargo build --target=aarch64-linux-android
@@ -33,5 +37,5 @@ if echo $BUILD_TARGETS | grep "i686"; then
 fi
 if echo $BUILD_TARGETS | grep "linux"; then
     cargo build --target=x86_64-unknown-linux-gnu
-    cp target/x86_64-unknown-linux-gnu/debug/libbdk_jni.so lib/build/jniLibs/x86_64_linux
+    cp target/x86_64-unknown-linux-gnu/debug/libbdk_jni.so jvm/build/jniLibs/x86_64_linux
 fi
