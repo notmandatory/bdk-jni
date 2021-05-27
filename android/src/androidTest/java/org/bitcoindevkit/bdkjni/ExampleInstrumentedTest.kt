@@ -14,9 +14,9 @@ import org.junit.runner.RunWith
 import org.junit.Assert.*
 import org.junit.Before
 
-import org.bitcoindevkit.bdkjni.Types.Network
-import org.bitcoindevkit.bdkjni.Types.WalletConstructor
-import org.bitcoindevkit.bdkjni.Types.WalletPtr
+//import org.bitcoindevkit.bdkjni.Types.Network
+//import org.bitcoindevkit.bdkjni.Types.WalletConstructor
+//import org.bitcoindevkit.bdkjni.Types.WalletPtr
 import org.junit.Ignore
 
 /**

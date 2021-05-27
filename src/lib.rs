@@ -529,9 +529,8 @@ fn do_key_call(req: BdkRequest) -> Result<serde_json::Value, BdkJniError> {
 }
 
 /// Expose the JNI interface below
-#[cfg(target_os = "android")]
 #[allow(non_snake_case)]
-pub mod android {
+pub mod bdk_jni {
     use std::ffi::CString;
 
     use jni::objects::{JClass, JObject, JString};
@@ -576,7 +575,8 @@ pub mod android {
         incoming_stringj: JString,
     ) -> jstring {
         use crate::BdkRequest::*;
-
+        
+        #[cfg(target_os = "android")]
         android_logger::init_once(
             android_logger::Config::default().with_min_level(log::Level::Debug),
         );

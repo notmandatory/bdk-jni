@@ -10,16 +10,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: x86_64-linux-android
+          - target: x86_64-server-android
             test: true
             api: 28
             arch: x86_64
-          - target: i686-linux-android
+          - target: i686-server-android
             test: true
             api: 28
             arch: x86
-          - target: aarch64-linux-android
-          - target: armv7-linux-androideabi
+          - target: aarch64-server-android
+          - target: armv7-server-androideabi
     env:
       BUILD_TARGETS: ${{ matrix.target }}
     steps:
@@ -54,7 +54,7 @@ jobs:
       - name: Set profile
         run: rustup set profile minimal
       - name: Add targets
-        run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
+        run: rustup target add x86_64-server-android i686-server-android aarch64-server-android armv7-server-androideabi
       - name: Build
         run: ./gradlew build
 
